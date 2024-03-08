@@ -32,6 +32,7 @@ class HTMLScrapper:
             if len(table_row.find_all(['th', 'td'])) >= 1:
                 print(file.name)
                 times_table = self.get_times(table_row)
+                self.get_delays(times_table)
                 stations_table, data_table = self.get_stations_and_dates(table_row)
             else:
                 print(file.name, "No table found")
@@ -52,20 +53,27 @@ class HTMLScrapper:
 
     def get_times(self, table_row):
         times_t = []
+        delays = []
         times = table_row.find_all('p')
 
         for i in range(len(times)):
-            if str(times[i].text.strip()) == '→  (---)' and i + 1 < len(times):
+            if str(times[i].text.strip()) == '→  (---)' and i + 1 < len(times) :
                 times_t.append(times[i + 1].text.replace("→", "").strip())
             elif str(times[i].text.strip()) == '(---) →' and i - 1 >= 0:
                 times_t.append(times[i - 1].text.replace("→", "").strip())
             else:
                 times_t.append(times[i].text.replace("→", "").strip())
+        print(times_t)
         return times_t
 
-    def convert_delays(self, times):
-
-        pass
+    def get_delays(self, times):
+        delays = []
+        for delay in times:
+            pattern = re.search(r'\((\d+) min\)', delay)
+            if pattern:
+                value_from_brackets = pattern.group(1)
+                delays.append(value_from_brackets)
+        return delays
 
     def zip(self, table1, table2):
         zipped_table = zip(table1, table2)
