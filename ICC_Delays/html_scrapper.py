@@ -1,6 +1,5 @@
 import re
 from bs4 import BeautifulSoup
-import requests
 import os
 
 class HTMLScrapper:
@@ -31,51 +30,21 @@ class HTMLScrapper:
         for table_row in table_rows:
             if len(table_row.find_all(['th', 'td'])) >= 1:
                 print(file.name)
-                times_table = self.get_times(table_row)
-                self.get_delays(times_table)
-                stations_table, data_table = self.get_stations_and_dates(table_row)
+                self.get_data(table_row)
+                self.get_times(table_row)
             else:
                 print(file.name, "No table found")
 
-    def get_stations_and_dates(self, table_row):
-        pattern = re.compile(r'\b\d{4}-\d{2}-\d{2}\b')
-        stations = []
-        data = []
-        stations_and_dates = table_row.find_all('th')
+    def get_data(self, table):
+        data = table.find_all('th')
+        data_table = [data.text.split() for data in data]
+        print(data_table)
 
-        for station_and_date in stations_and_dates:
-            text_content = station_and_date.text.strip()
-            if pattern.search(text_content):
-                data.append(text_content)
-            else:
-                stations.append(text_content)
-        return stations, data
+    def get_times(self, table):
+        data = table.find_all('td', class_="normal")
+        data_table = [data.text for data in data]
+        print(data_table)
 
-    def get_times(self, table_row):
-        times_t = []
-        delays = []
-        times = table_row.find_all('p')
 
-        for i in range(len(times)):
-            if str(times[i].text.strip()) == '→  (---)' and i + 1 < len(times) :
-                times_t.append(times[i + 1].text.replace("→", "").strip())
-            elif str(times[i].text.strip()) == '(---) →' and i - 1 >= 0:
-                times_t.append(times[i - 1].text.replace("→", "").strip())
-            else:
-                times_t.append(times[i].text.replace("→", "").strip())
-        print(times_t)
-        return times_t
 
-    def get_delays(self, times):
-        delays = []
-        for delay in times:
-            pattern = re.search(r'\((\d+) min\)', delay)
-            if pattern:
-                value_from_brackets = pattern.group(1)
-                delays.append(value_from_brackets)
-        return delays
 
-    def zip(self, table1, table2):
-        zipped_table = zip(table1, table2)
-        print(list(zipped_table))
-        return zipped_table
