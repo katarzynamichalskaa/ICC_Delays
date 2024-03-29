@@ -1,14 +1,17 @@
-import re
 from bs4 import BeautifulSoup
 import os
+from SQL_conv import ConvertToSQL
+from unidecode import unidecode
+
 
 class HTMLScrapper:
     def __init__(self, folder_path):
         self.folder_path = folder_path
+        self.converter = ConvertToSQL()
 
     def get_path(self):
         files = []
-        html_files = [f for f in os.listdir(self.folder_path) if f.endswith('.html')][:3]
+        html_files = [f for f in os.listdir(self.folder_path) if f.endswith('.html')]
 
         for html_file in html_files:
             file_path = os.path.join(self.folder_path, html_file)
@@ -16,6 +19,7 @@ class HTMLScrapper:
         return files
 
     def open_files(self):
+
         files = self.get_path()
 
         for file_path in files:
@@ -23,27 +27,55 @@ class HTMLScrapper:
                 html_content = file.read()
             self.scrape(html_content, file)
 
+        self.finish()
+
     def scrape(self, html_content, file):
-        soup = BeautifulSoup(html_content, "lxml")
-        table_rows = soup.select('table')
 
-        for table_row in table_rows:
-            if len(table_row.find_all(['th', 'td'])) >= 1:
-                print(file.name)
-                self.get_data(table_row)
-                self.get_times(table_row)
+        file_name_with_extension = os.path.basename(file.name)
+        file_name, _ = os.path.splitext(file_name_with_extension)
+        tab_name = unidecode("train_" + file_name.replace(" ", "_").replace("-", "_").replace("-","").replace(".","_"))
+
+        print(file_name)
+
+        soup = BeautifulSoup(html_content, "html.parser")
+        rows = soup.find_all('tr')
+
+        for i in range(0, len(rows), 2):
+            date_element = rows[i].find('th', class_='date')
+            stations = [th.text for th in rows[i].find_all('th')[1:]]
+            times = rows[i + 1].find_all('td', class_='normal')
+
+            if date_element:
+                date = date_element.text
+                self.get_info(date, stations, times, tab_name)
             else:
-                print(file.name, "No table found")
+                print("No table found")
 
-    def get_data(self, table):
-        data = table.find_all('th')
-        data_table = [data.text.split() for data in data]
-        print(data_table)
+    def get_info(self, date, stations, times, tab_name):
 
-    def get_times(self, table):
-        data = table.find_all('td', class_="normal")
-        data_table = [data.text for data in data]
-        print(data_table)
+        for station, time in zip(stations, times):
+            arrival_info = time.find('p', class_='arr').text.replace('→', '').strip()
+            departure_info = time.find('p', class_='dep').text.replace('→', '').strip()
+
+            if arrival_info == '(---)':
+                arrival_info = departure_info
+            if departure_info == '(---)':
+                departure_info = arrival_info
+
+            arr, delay_arr = arrival_info.split(' ', 1)
+            dep, delay_dep = departure_info.split(' ', 1)
+
+            delay_arr = delay_arr.replace('(', '').replace(')', '').replace('min', '')
+            delay_dep = delay_dep.replace('(', '').replace(')', '').replace('min', '')
+
+            self.converter.update_table_SQL(tab_name, date, station, arr, delay_arr, dep, delay_dep)
+
+    def finish(self):
+        self.converter.close_connection()
+
+
+
+
 
 
 

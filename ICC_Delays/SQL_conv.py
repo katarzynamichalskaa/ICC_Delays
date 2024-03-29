@@ -1,5 +1,6 @@
 import pyodbc
 
+
 class ConvertToSQL:
     def __init__(self):
         self.server = 'DESKTOP-OK6UCVH'
@@ -14,18 +15,26 @@ class ConvertToSQL:
         self.cursor = self.connection.cursor()
 
     def create_table_SQL(self, table_name):
-        self.cursor.execute(f'''CREATE TABLE {table_name}
-                     (id INT PRIMARY KEY NOT NULL,
-                      name TEXT NOT NULL,
-                      age INT NOT NULL)''')
-    def update_table_SQL(self, table_name, date, station_from, station_to, departure_time, arrival_time, delay_minutes):
+        self.cursor.execute(f'''
+            IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES 
+                           WHERE TABLE_NAME = N'{table_name}')
+            BEGIN
+                CREATE TABLE {table_name}
+                (date DATE NOT NULL,
+                 station TEXT NOT NULL,
+                 arrival_time TIME NOT NULL,
+                 arrival_delay INT NOT NULL,
+                 departure_time TIME NOT NULL,
+                 departure_delay INT NOT NULL)
+            END
+        ''')
+
+    def update_table_SQL(self, table_name, date, station, arrival_time, arrival_delay, departure_time, departure_delay):
         self.create_table_SQL(table_name)
-        self.cursor.execute('''
-                        INSERT INTO delays (date, station_from, station_to, departure_time, arrival_time, delay_minutes)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    ''', (date, station_from, station_to, departure_time, arrival_time, delay_minutes))
-        self.close_connection()
-        pass
+        self.cursor.execute(f'''
+                            INSERT INTO {table_name} (date, station, arrival_time, arrival_delay, departure_time, departure_delay)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        ''', (date, station, arrival_time, arrival_delay, departure_time, departure_delay))
 
     def close_connection(self):
         self.connection.commit()
