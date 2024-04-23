@@ -4,7 +4,7 @@ from SQL_conv import ConvertToSQL
 from unidecode import unidecode
 
 
-class HTMLScrapper:
+class TrainScrapper:
     def __init__(self, folder_path):
         self.folder_path = folder_path
         self.converter = ConvertToSQL()
