@@ -2,12 +2,14 @@ from bs4 import BeautifulSoup
 import os
 from SQL_conv import ConvertToSQL
 from unidecode import unidecode
+from weather_scrapper import WeatherScrapper
 
 
 class TrainScrapper:
     def __init__(self, folder_path):
         self.folder_path = folder_path
         self.converter = ConvertToSQL()
+        self.weather = WeatherScrapper()
 
     def get_path(self):
         files = []
@@ -54,21 +56,31 @@ class TrainScrapper:
     def get_info(self, date, stations, times, tab_name):
 
         for station, time in zip(stations, times):
-            arrival_info = time.find('p', class_='arr').text.replace('→', '').strip()
-            departure_info = time.find('p', class_='dep').text.replace('→', '').strip()
+            arr, delay_arr, dep, delay_dep = self.clean_train_data(time)
 
-            if arrival_info == '(---)':
-                arrival_info = departure_info
-            if departure_info == '(---)':
-                departure_info = arrival_info
+            temp, snow, wind = self.weather.get_data(location=station, time=time, date1=date)
 
-            arr, delay_arr = arrival_info.split(' ', 1)
-            dep, delay_dep = departure_info.split(' ', 1)
-
-            delay_arr = delay_arr.replace('(', '').replace(')', '').replace('min', '')
-            delay_dep = delay_dep.replace('(', '').replace(')', '').replace('min', '')
+            print(temp, snow, wind)
 
             self.converter.update_table_SQL(tab_name, date, station, arr, delay_arr, dep, delay_dep)
+
+    def clean_train_data(self, time):
+
+        arrival_info = time.find('p', class_='arr').text.replace('→', '').strip()
+        departure_info = time.find('p', class_='dep').text.replace('→', '').strip()
+
+        if arrival_info == '(---)':
+            arrival_info = departure_info
+        if departure_info == '(---)':
+            departure_info = arrival_info
+
+        arr, delay_arr = arrival_info.split(' ', 1)
+        dep, delay_dep = departure_info.split(' ', 1)
+
+        delay_arr = delay_arr.replace('(', '').replace(')', '').replace('min', '')
+        delay_dep = delay_dep.replace('(', '').replace(')', '').replace('min', '')
+
+        return arr, delay_arr, dep, delay_dep
 
     def finish(self):
         self.converter.close_connection()
